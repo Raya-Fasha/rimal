@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../state/app_state.dart';
 import '../../theme/colors.dart';
-import '../../data/mock_data.dart';
 import '../../widgets/widgets.dart';
 
 class RegDashScreen extends StatelessWidget {
@@ -13,15 +12,26 @@ class RegDashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final statuses = t['statuses'] as Map;
     final all      = t['reg_all'] as String;
-    final sfOpts   = [all, 'Submitted', 'Under Review', 'Approved for Sandbox', 'Rejected'];
+    final sfOpts   = [all, 'Submitted', 'Under Review', 'Approved', 'Rejected', 'Info Required'];
     final rfOpts   = [all, 'Low', 'Medium', 'High'];
     final stats    = t['reg_stats'] as List;
+    final apps     = state.applications;
 
-    final filtered = APPS.where((a) =>
-        (state.statusFilter == all || state.statusFilter == 'All' ||
-            a['status'] == state.statusFilter) &&
-        (state.riskFilter == all || state.riskFilter == 'All' ||
-            a['risk'] == state.riskFilter)).toList();
+    final filtered = apps.where((a) {
+      final statusMatch = state.statusFilter == all ||
+          state.statusFilter == 'All' ||
+          a['status'].toString().toLowerCase() ==
+              state.statusFilter.toLowerCase();
+      final riskMatch = state.riskFilter == all ||
+          state.riskFilter == 'All' ||
+          a['risk'] == state.riskFilter;
+      return statusMatch && riskMatch;
+    }).toList();
+
+    final totalCount    = apps.length;
+    final pendingCount  = apps.where((a) => a['status'].toString().toLowerCase() == 'submitted' || a['status'].toString().toLowerCase() == 'under review').length;
+    final approvedCount = apps.where((a) => a['status'].toString().toLowerCase() == 'approved').length;
+    final highRiskCount = apps.where((a) => a['risk'] == 'High').length;
 
     return RimalScaffold(
       state: state,
@@ -42,28 +52,35 @@ class RegDashScreen extends StatelessWidget {
 
             // Stats
             Row(
-              children: [[5, 0], [2, 1], [3, 2], [1, 3]]
-                  .map((e) => Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(right: e[1] < 3 ? 8 : 0),
-                          child: RCard(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('${e[0]}',
-                                      style: const TextStyle(
-                                          color: C.textPrim,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w900)),
-                                  Text(stats[e[1]],
-                                      style: const TextStyle(
-                                          color: C.textDim, fontSize: 10)),
-                                ]),
-                          ),
-                        ),
-                      ))
-                  .toList(),
+              children: [
+                [totalCount, 0],
+                [pendingCount, 1],
+                [highRiskCount, 2],
+                [approvedCount, 3],
+              ].map((e) {
+                final idx = e[1];
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: idx < 3 ? 8 : 0),
+                    child: RCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${e[0]}',
+                              style: const TextStyle(
+                                  color: C.textPrim,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900)),
+                          Text(stats[idx],
+                              style: const TextStyle(
+                                  color: C.textDim, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 12),
 
@@ -107,8 +124,20 @@ class RegDashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Results or empty state
-            if (filtered.isEmpty)
+            // Loading / error / results
+            if (state.isAppLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (state.appError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(state.appError!,
+                    style: const TextStyle(color: C.red, fontSize: 13),
+                    textAlign: TextAlign.center),
+              )
+            else if (filtered.isEmpty)
               REmptyState(
                 icon: Icons.filter_list_off_rounded,
                 title: t['reg_empty_title'],
@@ -121,12 +150,12 @@ class RegDashScreen extends StatelessWidget {
                       onTap: () => state.selectApp(app, 'review'),
                       child: RCard(
                         child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(app['id'],
+                                Text(app['id'] ?? '',
                                     style: const TextStyle(
                                         color: C.textDim,
                                         fontSize: 11,
@@ -138,29 +167,30 @@ class RegDashScreen extends StatelessWidget {
                                       fg: riskFg(app['risk'])),
                                   const SizedBox(width: 6),
                                   RBadge(
-                                      label: statuses[app['status']] ??
-                                          app['status'],
+                                      label: statuses[app['status']] ?? app['status'],
                                       bg: statusBg(app['status']),
                                       fg: statusFg(app['status'])),
                                 ]),
-                              ]),
-                          const SizedBox(height: 6),
-                          Text(app['project'],
-                              style: const TextStyle(
-                                  color: C.textPrim,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600)),
-                          Text('${app['org']} · ${app['sector']}',
-                              style: const TextStyle(
-                                  color: C.textDim, fontSize: 12)),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: RBtn(
-                                label: t['reg_review'],
-                                onTap: () => state.selectApp(app, 'review')),
-                          ),
-                        ]),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(app['project'] ?? '',
+                                style: const TextStyle(
+                                    color: C.textPrim,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                            Text('${app['org']} · ${app['sector']}',
+                                style: const TextStyle(
+                                    color: C.textDim, fontSize: 12)),
+                            const SizedBox(height: 10),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: RBtn(
+                                  label: t['reg_review'],
+                                  onTap: () => state.selectApp(app, 'review')),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   )),

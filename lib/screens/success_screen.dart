@@ -44,8 +44,8 @@ class SuccessScreen extends StatelessWidget {
           Text(t['success_ref'],
               style: const TextStyle(color: C.textMut, fontSize: 13)),
           const SizedBox(height: 4),
-          const Text('APP-2024-006',
-              style: TextStyle(
+          Text(state.submittedReference ?? 'APP-2024-006',
+              style: const TextStyle(
                   color: C.sand,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,

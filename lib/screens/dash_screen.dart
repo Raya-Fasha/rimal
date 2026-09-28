@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/colors.dart';
-import '../data/mock_data.dart';
 import '../widgets/widgets.dart';
 
 class DashScreen extends StatelessWidget {
@@ -14,7 +13,15 @@ class DashScreen extends StatelessWidget {
     final stats      = t['dash_stats'] as List;
     final flagLabels = t['flag_labels'] as List;
     final statuses   = t['statuses'] as Map;
-    final apps       = APPS.take(3).toList();
+    final apps       = state.applications;
+
+    final totalCount    = apps.length;
+    final approvedCount = apps.where((a) =>
+        a['status'].toString().toLowerCase() == 'approved').length;
+    final pendingCount  = apps.where((a) {
+      final s = a['status'].toString().toLowerCase();
+      return s == 'submitted' || s == 'under review';
+    }).length;
 
     return RimalScaffold(
       state: state,
@@ -50,23 +57,39 @@ class DashScreen extends StatelessWidget {
 
             // Stats row
             Row(
-              children: List.generate(
-                3,
-                (i) => Expanded(
+              children: [
+                [totalCount, 0],
+                [pendingCount, 1],
+                [approvedCount, 2],
+              ].map((e) {
+                final idx = e[1];
+                return Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
+                    padding: EdgeInsets.only(right: idx < 2 ? 8 : 0),
                     child: _StatCard(
-                      value: ['3', '1', '1'][i],
-                      label: stats[i],
+                      value: '${e[0]}',
+                      label: stats[idx],
                     ),
                   ),
-                ),
-              ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
 
             // Application list or empty state
-            if (apps.isEmpty)
+            if (state.isAppLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (state.appError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(state.appError!,
+                    style: const TextStyle(color: C.red, fontSize: 13),
+                    textAlign: TextAlign.center),
+              )
+            else if (apps.isEmpty)
               REmptyState(
                 icon: Icons.inbox_outlined,
                 title: t['dash_empty_title'],

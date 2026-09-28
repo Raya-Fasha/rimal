@@ -137,6 +137,30 @@ class FormScreen extends StatelessWidget {
                   ),
                 ],
 
+                if (state.formSubmissionError != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A0A0A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: C.red.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: C.red, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          state.formSubmissionError!,
+                          style: const TextStyle(
+                              color: C.red, fontSize: 13),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+
                 const SizedBox(height: 24),
 
                 // Nav buttons
@@ -161,8 +185,12 @@ class FormScreen extends StatelessWidget {
                             onTap: () => state.formNext(),
                           )
                         : _SubmitBtn(
-                            label: t['form_submit'],
-                            onTap: () => state.submitForm(),
+                            label: state.isFormSubmitting
+                                ? t['form_submitting'] ?? 'Submitting...'
+                                : t['form_submit'],
+                            onTap: state.isFormSubmitting
+                                ? () {}
+                                : () => state.submitForm(),
                           ),
                   ],
                 ),
@@ -457,11 +485,13 @@ class FormScreen extends StatelessWidget {
                           await FilePicker.platform.pickFiles(
                         type: FileType.custom,
                         allowedExtensions: ['pdf'],
+                        withData: true,
                       );
                       if (result != null &&
                           result.files.isNotEmpty) {
+                        final file = result.files.first;
                         state.setUploadedFile(
-                            doc, result.files.first.name);
+                            doc, file.name, file.bytes);
                       }
                     },
                     child: Container(

@@ -32,8 +32,17 @@ class FormData {
   Set<String> selectedRisks     = {};
   bool? processesSensitiveData;
 
-  // Step 5 — uploaded file names
+  // Step 5 — uploaded file names and raw bytes
   Map<String, String?> uploadedFiles = {
+    'Project brief': null,
+    'Model documentation': null,
+    'Compliance documentation': null,
+    'Testing report': null,
+    'Data sheet': null,
+    'Additional attachments': null,
+  };
+
+  Map<String, List<int>?> uploadedFileBytes = {
     'Project brief': null,
     'Model documentation': null,
     'Compliance documentation': null,
@@ -67,6 +76,14 @@ class FormData {
     selectedRisks        = {};
     processesSensitiveData = null;
     uploadedFiles = {
+      'Project brief': null,
+      'Model documentation': null,
+      'Compliance documentation': null,
+      'Testing report': null,
+      'Data sheet': null,
+      'Additional attachments': null,
+    };
+    uploadedFileBytes = {
       'Project brief': null,
       'Model documentation': null,
       'Compliance documentation': null,
@@ -248,8 +265,9 @@ class RiskScorer {
     final finalScore = rawScore.clamp(0, 100);
 
     final String level;
-    if (finalScore >= 61)      level = 'High';
-    else if (finalScore >= 31) level = 'Medium';
+    if (finalScore >= 61) {
+      level = 'High';
+    } else if (finalScore >= 31) level = 'Medium';
     else                       level = 'Low';
 
     final flags = <int>[];

@@ -96,7 +96,7 @@ class DetailScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF002040),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF0072CF30)),
+              border: Border.all(color: const Color(0xff0072cf30)),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -186,71 +186,78 @@ class DetailScreen extends StatelessWidget {
             ),
           ],
 
-          // ── Score Breakdown (Phase 4) ──────────────────────────────────
-          const SizedBox(height: 12),
-          RCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t['detail_breakdown'].toString().toUpperCase(),
-                  style: const TextStyle(
-                      color: C.textDim,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8)),
-              const SizedBox(height: 10),
-              _breakdownRow('Sector', _sectorLabel(app['sector']),
-                  _sectorPts(app['sector'])),
-              const RDivider(),
-              const SizedBox(height: 8),
-              _breakdownRow('Data', 'Personal / biometric data',
-                  _dataPts(app['score'], app['sector'])),
-              const RDivider(),
-              const SizedBox(height: 8),
-              _breakdownRow('Autonomy', _autonomyLabel(app['risk']),
-                  _autonomyPts(app['risk'])),
-            ]),
-          ),
+          // ── Score Breakdown ────────────────────────────────────────────
+          if (_parseBreakdown(app['risk_breakdown']).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            RCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t['detail_breakdown'].toString().toUpperCase(),
+                    style: const TextStyle(
+                        color: C.textDim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8)),
+                const SizedBox(height: 10),
+                ..._parseBreakdown(app['risk_breakdown']).asMap().entries.map((entry) {
+                  final i    = entry.key;
+                  final item = entry.value;
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (i > 0) const RDivider(),
+                    if (i > 0) const SizedBox(height: 8),
+                    _breakdownRow(item['category'] ?? '', item['label'] ?? '', item['points'] as int? ?? 0),
+                  ]);
+                }),
+              ]),
+            ),
+          ],
 
           // Documents
-          const SizedBox(height: 12),
-          RCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t['detail_docs'].toString().toUpperCase(),
-                  style: const TextStyle(
-                      color: C.textDim,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8)),
-              const SizedBox(height: 8),
-              ...[
-                'Project Brief.pdf',
-                'Model Documentation.pdf',
-                'Data Sheet.pdf',
-              ].map((doc) => Column(children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(doc,
-                              style: const TextStyle(
-                                  color: C.textPrim, fontSize: 13)),
-                          const Text('PDF',
-                              style: TextStyle(
-                                  color: C.textDim, fontSize: 11)),
-                        ],
+          if (state.selectedAppDocs.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            RCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t['detail_docs'].toString().toUpperCase(),
+                    style: const TextStyle(
+                        color: C.textDim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8)),
+                const SizedBox(height: 8),
+                ...state.selectedAppDocs.map((doc) => Column(children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                doc['file_name'] as String? ?? doc['doc_type'] as String? ?? '',
+                                style: const TextStyle(color: C.textPrim, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Text('PDF',
+                                style: TextStyle(color: C.textDim, fontSize: 11)),
+                          ],
+                        ),
                       ),
-                    ),
-                    const RDivider(),
-                  ])),
-            ]),
-          ),
+                      const RDivider(),
+                    ])),
+              ]),
+            ),
+          ],
         ]),
       ),
     );
   }
 }
 
-// ── Breakdown helpers for mock apps ───────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
+List<Map<String, dynamic>> _parseBreakdown(dynamic raw) {
+  if (raw is! List) return [];
+  return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+}
+
 Widget _breakdownRow(String category, String label, int pts) => Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -284,26 +291,3 @@ Widget _breakdownRow(String category, String label, int pts) => Padding(
       ]),
     );
 
-String _sectorLabel(String s) => '$s sector';
-
-int _sectorPts(String s) {
-  switch (s) {
-    case 'Healthcare':     return 30;
-    case 'Finance':        return 25;
-    case 'Public Services':return 20;
-    case 'Education':      return 10;
-    default:               return 10;
-  }
-}
-
-int _dataPts(int score, String sector) =>
-    score - _sectorPts(sector) - _autonomyPts('High');
-
-String _autonomyLabel(String risk) => risk == 'High'
-    ? 'Fully automated decisions'
-    : risk == 'Medium'
-        ? 'Decision support with oversight'
-        : 'Human approval required';
-
-int _autonomyPts(String risk) =>
-    risk == 'High' ? 25 : risk == 'Medium' ? 10 : 5;

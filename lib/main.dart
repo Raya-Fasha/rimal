@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/env.dart';
 import 'state/app_state.dart';
 import 'theme/colors.dart';
 import 'i18n/translations.dart';
@@ -13,8 +15,22 @@ import 'screens/form_screen.dart';
 import 'screens/success_screen.dart';
 import 'screens/regulator/reg_dash_screen.dart';
 import 'screens/regulator/review_screen.dart';
+import 'screens/signup_screen.dart';
+import 'screens/trouble_screen.dart';
+import 'screens/confirm_email_screen.dart';
+import 'screens/reset_password_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Read the URL BEFORE Supabase.initialize() processes and clears it.
+  AppState.detectPendingAuth();
+
+  await Supabase.initialize(
+    url:     Env.supabaseUrl,
+    anonKey: Env.supabaseAnonKey,
+  );
+
   runApp(const RimalApp());
 }
 
@@ -32,6 +48,9 @@ class _RimalAppState extends State<RimalApp> {
   void initState() {
     super.initState();
     _state.addListener(() => setState(() {}));
+    // Delay by one event loop tick so onAuthStateChange (passwordRecovery)
+    // fires before restoreSession decides whether to auto-login.
+    Future.delayed(Duration.zero, _state.restoreSession);
   }
 
   @override
@@ -98,6 +117,10 @@ class _RimalAppState extends State<RimalApp> {
       case 'regdash':    return RegDashScreen(state: _state, t: t);
       case 'review':     return ReviewScreen(state: _state, t: t);
       case 'reviewdone': return ReviewDoneScreen(state: _state, t: t);
+      case 'signup':     return SignupScreen(state: _state, t: t);
+      case 'trouble':       return TroubleScreen(state: _state, t: t);
+      case 'confirm':       return ConfirmEmailScreen(state: _state, t: t);
+      case 'resetpassword': return ResetPasswordScreen(state: _state, t: t);
       default:           return LandingScreen(state: _state, t: t);
     }
   }
